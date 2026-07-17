@@ -121,3 +121,22 @@ async def kill_idle_in_transaction(threshold_seconds: float, dry_run: bool) -> d
                 terminated.append(r["pid"])
 
         return {"dry_run": False, "terminated_pids": terminated}
+
+
+async def terminate_by_pids(pids: list[int]) -> dict:
+    """Terminate an explicit, pre-approved list of pids. No threshold or
+    re-derivation logic here on purpose — by the time this is called, the
+    policy gate has already decided which pids are safe. This function's
+    only job is to execute exactly what it's told, nothing more."""
+    if not pids:
+        return {"terminated_pids": []}
+
+    pool = await get_pool()
+    terminated = []
+    async with pool.acquire() as conn:
+        for pid in pids:
+            ok = await conn.fetchval("SELECT pg_terminate_backend($1)", pid)
+            if ok:
+                terminated.append(pid)
+
+    return {"terminated_pids": terminated}

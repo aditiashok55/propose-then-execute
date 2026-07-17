@@ -43,5 +43,16 @@ async def apply_pool_action(threshold_seconds: float = 60.0, dry_run: bool = Tru
     return await db.kill_idle_in_transaction(threshold_seconds, dry_run)
 
 
+@mcp.tool()
+async def execute_pool_action(pids: list[int]) -> dict:
+    """Terminate an explicit list of pids that have ALREADY been approved
+    by loop.policy_gate. This tool trusts the caller's pid list completely
+    and does no threshold or safety logic of its own — which is exactly
+    why the harness never lets the model call this directly. The model
+    only ever sees apply_pool_action's dry-run proposals; execute_pool_action
+    is invoked by harness code after the gate runs, not by a model tool call."""
+    return await db.terminate_by_pids(pids)
+
+
 if __name__ == "__main__":
     mcp.run()
